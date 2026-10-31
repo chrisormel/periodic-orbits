@@ -6,13 +6,16 @@
 
 # track only these files
 !PO/Cubes/21low.pkl
-!PO/Cubes/21low.txt
 !PO/Cubes/21med.pkl
-!PO/Cubes/21med.txt
 !PO/Cubes/32low.pkl
 !PO/Cubes/32med.pkl
+!PO/Cubes/321low.pkl
+!PO/Cubes/421low.pkl
 !PO/Helper/runpo.py
 !PO/Helper/pocore.py
 !PO/Helper/pofun.py
 !PO/Helper/runpo.py
 !README.md
+!POfit/Solutions/
+!POfit/Solutions/*.pkl
+!POfit/Solutions/runsolutions.py

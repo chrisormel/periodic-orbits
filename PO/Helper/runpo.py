@@ -48,4 +48,3 @@ for k,time in enumerate(tarr):
 
     print('{:10.3f} {:10.2f} {:10.2f}'.format(time/tpo, ps[1].M, ps[1].theta))
 
-
