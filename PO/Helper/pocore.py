@@ -89,24 +89,24 @@ def x_to_orbital (self, xs):
     return partL
 
 
-def setup_sim (self, x, integrator='ias15', peri_scaling=False):
+def setup_sim (self, x, integrator='ias15', itgopts={}):
     """
     Setup simulation. Jacobean orbital elements are used...
 
     x -- solution variables
     """
 
+    if not np.isfinite(x).all():
+        return None
     partL = self.x_to_orbital (x)
-    npart = len(partL)
 
-    if np.any([part['e']>1 for part in partL]):
-        self.eject = True
+    if any(not 0<=part['e']<1 or not np.isfinite(part['P']) or part['P']<=0
+           for part in partL):
         return None
 
-    if peri_scaling:
+    if integrator in ['whfast', 'whfast512']:
         ## scaling with (1-e)**1.5 to resolve pericenter passages.
         pscale = min([part['P']*(1-part['e'])**1.5/(2*np.pi) for part in partL])
-
 
     #add particles inside-out
     sim = rebound.Simulation()
@@ -118,41 +118,27 @@ def setup_sim (self, x, integrator='ias15', peri_scaling=False):
     #important!
     sim.move_to_com()
 
-    ps = sim.particles
-    amax = max([p.a*(1+p.e) for p in ps[1:]])
-
-
     if integrator=='ias15':
         #the absolute lower limit...
         #[25.11.01]: increased to speed up some...
-        sim.ri_ias15.min_dt = 1e-3
-    elif integrator=='whfast':
-        sim.integrator = 'whfast'
-        sim.ri_whfast.corrector = 17
-        sim.ri_whfast.safe_mode = 0
-        sim.exact_finish_time = 0       #no need to be exact
+        sim.integrator.min_dt = 1e-2 #rebound v 5.2.0 // should be enough for PO!
+    elif integrator in ['whfast', 'whfast512']:
+        ps = sim.particles
+        amax = max([p.a*(1+p.e) for p in ps[1:]])
+        sim.integrator = integrator
+        sim.integrator.corrector = 17
+        if integrator=='whfast':
+            sim.integrator.safe_mode = 0
+#       sim.exact_finish_time = 0       #now as argument apparently
         sim.exit_min_distance = 0.001    #failsafe criterion...
         sim.exit_max_distance = 1.5*amax #escape criterion...
-        sim.dt = 0.02 *2*np.pi *pscale #pericenter scaling
-    elif integrator=='mercurius':
-        sim.integrator = 'mercurius'
-        sim.ri_ias15.min_dt = 1e-3
-        sim.dt = 0.02 *2*np.pi
-    elif integrator=='trace':
-       #sim.ri_ias15.min_dt = 1e-3 #??
-       #sim.ri_bs.min_dt = 1e-3
-       #sim.ri_bs.eps_rel = 1e-4
-       #sim.ri_bs.eps_abs = 1e-4
-       #sim.ri_trace.S_peri = "none" # Turn off pericenter switching
-        sim.integrator = 'trace'
-        sim.particles[0].r = 0.01 ##e=0.99
-        for i in range(1,npart+1):
-            sim.particles[i].r = 0.01*sim.particles[i].m**(1/3)
-        sim.collision = 'direct'
-        sim.collision_resolve = 'halt'
         sim.dt = 0.02 *2*np.pi *pscale #pericenter scaling
     else:
         print('[pocore.setup_sim]:no valid integrator')
         sys.exit()
+
+    #[26.09.27] allow non-default options
+    for opt,val in itgopts.items():
+        setattr(sim, opt, val)
 
     return sim
